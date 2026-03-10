@@ -1,0 +1,32 @@
+{
+    "name": "redis-lecture-examples",
+    "version": "1.0.0",
+    "description": "Redis 강의 예제 코드",
+    "main": "index.js",
+    "scripts": {
+        "build": "tsc",
+        "section:string": "ts-node src/string/index.ts",
+        "section:list": "ts-node src/list/index.ts",
+        "section:set": "ts-node src/set/index.ts",
+        "section:hash": "ts-node src/hash/index.ts",
+        "section:sorted-set": "ts-node src/sorted_set/index.ts",
+        "section:pub_sub": "ts-node src/pub_sub/index.ts",
+        "section:lua": "ts-node src/lua/index.ts",
+        "section:stream": "ts-node src/stream/index.ts"
+    },
+    "keywords": [
+        "redis",
+        "lecture",
+        "examples"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "ioredis": "^5.3.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.6",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    }
+}
