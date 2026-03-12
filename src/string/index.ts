@@ -7,12 +7,12 @@ async function main() {
 
     // Set a string value
     await client.set('user:100:name', 'John Doe');
-    const name = await client.get('key');
+    const name = await client.get('user:100:name');
     console.log('User name:', name);
 
     // Update a string value
     await client.set('user:100:name', 'Smith');
-    const updatedName = await client.get('user:1000:name');
+    const updatedName = await client.get('user:100:name');
     console.log('Updated user name:', updatedName);
 
     // get non-existent value
