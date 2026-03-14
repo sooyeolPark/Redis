@@ -11,6 +11,8 @@
         "section:hash": "ts-node src/hash/index.ts",
         "section:sorted-set": "ts-node src/sorted_set/index.ts",
         "section:pub_sub": "ts-node src/pub_sub/index.ts",
+        "section:pipelining": "ts-node src/pipelining/index.ts",
+        "section:transaction": "ts-node src/transaction/index.ts",
         "section:lua": "ts-node src/lua/index.ts",
         "section:stream": "ts-node src/stream/index.ts"
     },
