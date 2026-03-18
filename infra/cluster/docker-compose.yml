@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  redis-node-1:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-1
+    ports:
+      - "7010:7010"
+    command: redis-server --port 7010 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+
+  redis-node-2:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-2
+    ports:
+      - "7011:7011"
+    command: redis-server --port 7011 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+
+  redis-node-3:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-3
+    ports:
+      - "7012:7012"
+    command: redis-server --port 7012 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+
+  redis-node-4:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-4
+    ports:
+      - "7013:7013"
+    command: redis-server --port 7013 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+
+  redis-node-5:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-5
+    ports:
+      - "7014:7014"
+    command: redis-server --port 7014 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+
+  redis-node-6:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-node-6
+    ports:
+      - "7015:7015"
+    command: redis-server --port 7015 --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+
+  redis-cluster-creator:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-creator
+    command: [ "sh", "-c", "sleep 5 && redis-cli --cluster create redis-node-1:7010 redis-node-2:7011 redis-node-3:7012 redis-node-4:7013 redis-node-5:7014 redis-node-6:7015 --cluster-replicas 1 --cluster-yes" ]
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+      - redis-node-5
+      - redis-node-6

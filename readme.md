@@ -70,62 +70,15 @@ Redis(Remote Dictionary Server) 학습 및 실습 프로젝트
 
 ## 아키텍처 구조
 
-### 1. 기본 구조 (단일 인스턴스)
+Redis는 구성에 따라 **단일 인스턴스**, **Master-Replica**, **Sentinel**, **Cluster** 네 가지 형태로 운용할 수 있다. 각 구성별 상세 설명과 **Docker Compose** 실행 방법은 아래 폴더의 `readme.md`에 정리되어 있다.
 
-가장 단순한 구성으로, **클라이언트**가 **Redis 서버 한 대**에 직접 연결하여 모든 요청을 처리한다.
+| 구성 | 설명 | 실습 경로 |
+|------|------|-----------|
+| **1. 기본 구조 (단일 인스턴스)** | 클라이언트가 Redis 서버 한 대에 직접 연결. 구성이 단순하고 개발·테스트에 적합하다. | [infra/single/](infra/single/readme.md) |
+| **2. Master-Replica** | Master가 쓰기, Replica가 비동기 복제. 읽기는 Master/Replica 모두 가능해 읽기 부하 분산이 가능하다. 자동 페일오버는 없다. | [infra/master-replica/](infra/master-replica/readme.md) |
+| **3. Redis Sentinel** | Master-Replica 위에 Sentinel을 두어 Master 장애 시 **자동 페일오버**. 고가용성에 초점을 둔 구성이다. | [infra/sentinel/](infra/sentinel/readme.md) |
+| **4. Redis Cluster** | 16384 슬롯으로 데이터를 여러 Master에 샤딩하고, 각 Master에 Replica를 두어 **수평 확장 + 고가용성**을 제공한다. | [infra/cluster/](infra/cluster/readme.md) |
 
-- **동작 방식**  
-  애플리케이션(클라이언트)은 TCP 연결을 통해 Redis 서버에 접속하고, 모든 읽기·쓰기 명령을 이 한 대의 서버로 보낸다. 서버는 단일 스레드로 명령을 순차 처리한다.
-- **장점**  
-  구성이 단순하고 운영이 쉽다. 개발·테스트나 트래픽이 적은 서비스에 적합하다.
-- **단점**  
-  서버 한 대에 장애가 나면 서비스 전체가 중단되고, 성능·용량 한계도 이 한 대에 묶인다. 고가용성이나 수평 확장이 필요하면 Master-Replica, Sentinel, Cluster 구성을 고려하여야 한다.
-
----
-
-### 2. Master-Replica (주-복제) 구조
-
-**Master** 한 대가 쓰기를 담당하고, 그 데이터를 **Replica**들이 비동기로 복제하는 구조이다. 읽기는 Master와 Replica 모두에서 할 수 있어 읽기 부하를 나눌 수 있다.
-
-- **쓰기**  
-  모든 쓰기(SET, INCR, LPUSH 등)는 **반드시 Master**로만 보낸다. Replica는 쓰기를 받지 않는다.
-- **읽기**  
-  읽기(GET, LRANGE 등)는 **Master**에서 할 수도 있고 **Replica**에서 할 수도 있다. 여러 Replica에 읽기 요청을 나누면 Master 부하를 줄이고 처리량을 늘릴 수 있다.
-- **복제**  
-  Master에 쓰인 데이터는 내부적으로 Replica들에게 **비동기 복제**된다. Replica는 Master의 데이터 사본을 유지하므로 Master와 동일한 데이터를 읽을 수 있다. (복제 지연이 있을 수 있다.)
-- **특징**  
-  Master 장애 시 **자동 전환은 없다**. 수동으로 Replica를 Master로 승격하거나, Sentinel/Cluster처럼 자동 페일오버를 쓰려면 별도 구성이 필요하다.
-
----
-
-### 3. Redis Sentinel
-
-Master-Replica 구성 위에 **Sentinel**을 두어, Master와 Replica를 모니터링하고 Master 장애 시 **자동 페일오버**를 수행하는 고가용성 구성이다.
-
-- **클라이언트 연결**  
-  클라이언트는 Redis Master/Replica에 직접 주소를 넣지 않고, **Sentinel**에 먼저 연결하여 “현재 Master가 누구인지”를 묻는다. Sentinel이 알려준 Master 주소로 쓰기 요청을 보내고, 필요하면 Replica 주소로 읽기 요청을 분산한다. Master가 바뀌어도 Sentinel이 새 Master를 알려주므로 클라이언트는 계속 올바른 노드에 연결할 수 있다.
-- **Sentinel의 역할**  
-  Sentinel 인스턴스(보통 3개 이상, 홀수)가 Master와 모든 Replica를 **지속적으로 모니터링**한다. Master에 장애(다운, 네트워크 단절 등)가 감지되면 Sentinel들끼리 합의(quorum)를 통해 “Master가 죽었다”고 판단하고, Replica 중 하나를 **새 Master**로 선출한다. 나머지 Replica와 이전 Master(복구 시)는 새 Master의 Replica로 재설정된다.
-- **모니터링**  
-  각 Sentinel은 Master·Replica에 주기적으로 헬스 체크를 보내 상태를 확인한다. 이 정보를 다른 Sentinel과 공유하여 장애 감지와 페일오버 결정을 함께 한다.
-- **정리**  
-  단일 Master-Replica만 쓰면 Master 장애 시 수동 개입이 필요하지만, Sentinel을 쓰면 **자동 페일오버**로 서비스 연속성을 높일 수 있다. 데이터를 여러 노드에 나누어 저장하는(샤딩) 기능은 없고, 고가용성에 초점을 둔 구성이다.
-
----
-
-### 4. Redis Cluster
-
-데이터를 **여러 Master 노드에 슬롯 단위로 분산**하고, 각 Master마다 Replica를 두어 고가용성까지 갖춘 **수평 확장** 구성이다.
-
-- **슬롯 분산**  
-  Redis Cluster는 키 공간을 **16384개 슬롯(0~16383)**으로 나눈다. 각 키는 해시 연산으로 하나의 슬롯에 매핑되고, 각 Master 노드가 슬롯 범위를 나누어 가진다. 예: Master 1은 0–5460, Master 2는 5461–10922, Master 3은 10923–16383. 클라이언트는 키를 기준으로 “이 키는 어느 노드에 있는지” 계산하여 **해당 Master에 직접** 요청을 보낸다.
-- **클라이언트 동작**  
-  클라이언트는 클러스터 내 아무 노드에나 접속할 수 있다. 요청한 키가 그 노드에 없으면(다른 슬롯이면) 서버가 “그 키는 X번 노드로 가라”는 **리다이렉트(MOVED/ASK)**를 반환하고, 클라이언트는 해당 노드로 다시 요청을 보낸다. 대부분의 클라이언트 라이브러리는 이 과정을 내부에서 처리해 준다.
-- **Gossip 프로토콜**  
-  Master 노드들은 **Gossip**으로 서로의 상태(어느 노드가 살아 있는지, 슬롯 할당이 어떻게 되어 있는지 등)를 주기적으로 교환한다. 이를 통해 클러스터 전체의 토폴로지와 슬롯 맵을 유지하고, 노드 추가·제거·장애 시에도 정보가 퍼져 나간다.
-- **Replica와 고가용성**  
-  각 Master에는 보통 하나 이상의 **Replica**가 붙는다. Replica는 Master의 슬롯 데이터를 복제한다. Master가 죽으면 해당 Replica가 **새 Master로 승격**되어 그 슬롯 범위를 이어받고, 클러스터는 계속 동작한다.
-- **Sentinel과의 차이**  
-  Sentinel은 “Master 한 개 + Replica들”을 모니터링하고 자동 페일오버만 담당한다. Cluster는 **데이터를 여러 Master에 나누어 저장(샤딩)**하고, 각 파트에 대해 Replica로 고가용성을 제공한다. 데이터량이 많거나 쓰기 부하가 클 때 수평 확장이 필요하면 Cluster를 사용하는 것이 적합하다.
+각 폴더의 `docker-compose.yml`로 해당 구성을 바로 띄워 실습할 수 있다.
 
 ---
